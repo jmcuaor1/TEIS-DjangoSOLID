@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+import sys
 
 from .domain.builders import OrdenBuilder
 from .domain.logic import CalculadorImpuestos
@@ -6,10 +7,6 @@ from .models import Inventario, Libro
 
 
 class CompraService:
-    """
-    SERVICE LAYER: Orquesta la interacción entre el dominio,
-    la infraestructura y la base de datos.
-    """
 
     def __init__(self, procesador_pago):
         self.procesador_pago = procesador_pago
@@ -21,12 +18,17 @@ class CompraService:
         return {"libro": libro, "total": total}
 
     def ejecutar_compra(self, libro_id, cantidad=1, direccion="", usuario=None):
+        print(">>> PASO 1: Buscando libro...", flush=True)
         libro = get_object_or_404(Libro, id=libro_id)
+        
+        print(">>> PASO 2: Buscando inventario...", flush=True)
         inv = get_object_or_404(Inventario, libro=libro)
 
+        print(f">>> PASO 3: Stock disponible: {inv.cantidad}", flush=True)
         if inv.cantidad < cantidad:
             raise ValueError("No hay suficiente stock para completar la compra.")
 
+        print(">>> PASO 4: Construyendo orden...", flush=True)
         orden = (
             self.builder
             .con_usuario(usuario)
@@ -36,6 +38,7 @@ class CompraService:
             .build()
         )
 
+        print(">>> PASO 5: Procesando pago...", flush=True)
         pago_exitoso = self.procesador_pago.pagar(orden.total)
         if not pago_exitoso:
             orden.delete()
@@ -44,4 +47,6 @@ class CompraService:
         inv.cantidad -= cantidad
         inv.save()
 
+        print(">>> PASO 6: Compra completada!", flush=True)
         return orden.total
+    

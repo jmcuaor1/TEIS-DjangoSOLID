@@ -1,11 +1,16 @@
 import os
-
+import sys
 from .gateways import BancoNacionalProcesador
 
 
 class MockPaymentProcessor:
     def pagar(self, monto: float) -> bool:
-        print(f"[DEBUG] Mock Payment: Procesando pago de ${monto} sin cargo real.")
+        mensaje = f"[DEBUG] Mock Payment: Procesando pago de ${monto} sin cargo real."
+        print(mensaje, flush=True)
+        sys.stdout.flush()
+        # También lo guardamos en un archivo para tener evidencia
+        with open("mock_payment.log", "a") as f:
+            f.write(mensaje + "\n")
         return True
 
 
