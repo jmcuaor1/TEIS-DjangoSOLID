@@ -5,32 +5,38 @@ services:
   db:
     image: postgres:15
     volumes:
-      # Persistencia: Esto asegura que los datos sobrevivan si apagas el contenedor
       - postgres_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=tienda_db
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=secret_password
 
-  # Servicio de tu API Django
+  # Servicio Django con Gunicorn (ya no usa runserver)
   web:
     build: .
-    command: python manage.py runserver 0.0.0.0:8000
+    # CAMBIO: Gunicorn en lugar de runserver
+    command: gunicorn Tienda.wsgi:application --bind 0.0.0.0:8000
     volumes:
-      # Hot-Reload: Mapeamos la carpeta actual para que los cambios de código se reflejen sin reiniciar
       - .:/app
-    ports:
-      - "8000:8000"
     depends_on:
       - db
     environment:
-      # Estas variables deben coincidir con lo que espera tu settings.py
       - DB_NAME=tienda_db
       - DB_USER=postgres
       - DB_PASSWORD=secret_password
-      - DB_HOST=db  # ¡OJO! Aquí usamos el nombre del servicio 'db' como host
+      - DB_HOST=db
       - DB_PORT=5432
+    # NOTA: Ya no hay "ports" aquí. Django está aislado detrás de Nginx.
 
-# Definición del volumen persistente
+  # NUEVO: Servicio Nginx como Proxy Inverso
+  nginx:
+    image: nginx:1.25-alpine
+    ports:
+      - "80:80"  # Nginx es el único que da la cara a internet
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - web
+
 volumes:
   postgres_data:
